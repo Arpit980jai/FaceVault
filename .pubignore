@@ -1,0 +1,17 @@
+# Keep the published package lean. The example app is for development/demo and
+# its generated platform folders/builds should not ship to pub.dev.
+example/android/
+example/ios/
+example/build/
+example/.dart_tool/
+example/.flutter-plugins
+example/.flutter-plugins-dependencies
+
+# README diagrams are served from raw GitHub URLs, so they don't need to ship
+# inside the package (keeps the download small).
+assets/
+
+# IDE / OS
+.idea/
+.gradle/
+build/

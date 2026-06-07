@@ -1,165 +1,137 @@
 # FaceVault
 
+[![pub package](https://img.shields.io/pub/v/facevault.svg)](https://pub.dev/packages/facevault)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://developer.android.com)
 [![Min SDK](https://img.shields.io/badge/minSdk-24-blue.svg)](https://developer.android.com/about/versions/nougat)
-[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 
-On-device facial recognition for Android, packaged as a multi-module library
-(AAR). Capture, liveness, embedding, encrypted storage and matching all run
-**locally** — FaceVault declares **no `INTERNET` permission**.
+**On-device facial recognition for Flutter (Android).** Enroll people from photos
+and search them back — single photo, multiple photos, all faces in a group photo,
+or against a target list. Detection, embedding, encrypted storage and matching all
+run **locally**; no data leaves the device and **no internet permission** is used.
 
 ```
 facevault/
-├── facevault-core/     # Pure logic (no UI): camera, liveness, embedding, store, matching, api
-├── facevault-ui/       # Optional guided EnrollmentActivity + overlays
-└── facevault-sample/   # Demo app exercising all four search modes
+├── lib/        # Dart API — FaceVault + models (PersonRecord, MatchResult, ...)
+├── android/    # Native engine: embedding, store, matching, liveness + MethodChannel bridge
+└── example/    # Flutter example app
 ```
 
-## Features
+> Platform support: **Android only** (minSdk 24). iOS is not implemented.
 
-| Module    | What it does |
-|-----------|--------------|
-| `camera`    | CameraX + ML Kit capture across 5 poses (`FaceCaptureManager`) |
-| `liveness`  | Blink (EAR), head-turn (yaw) and blur/brightness/coverage gates |
-| `embedding` | TFLite MobileFaceNet (128-d) / ArcFace (512-d), NNAPI-accelerated |
-| `store`     | Room + SQLCipher (AES-256), key sealed in the Android Keystore |
-| `matching`  | Cosine-similarity engine with single / multi / targeted modes |
-| `api`       | `FaceVault` singleton — `Result<T>` + `Flow<SearchState>` |
+## Install
 
-- **Min SDK 24** (Android 7.0), compileSdk 34.
-- Everything off the main thread: `Dispatchers.Default` for ML, `Dispatchers.IO` for the DB.
-
-## Architecture
-
-### Module 1 — Camera & Liveness (`facevault-core/camera`, `liveness`)
-Guided 5-pose capture, blink/head-turn/quality liveness gates, and the
-`CaptureState` flow.
-
-![Module 1 — Camera & Liveness](assets/module1.png)
-
-### Module 2 — Embedding Pipeline (`facevault-core/embedding`)
-`FaceEmbedder` (TFLite + NNAPI), `FacePreprocessor` crop/align, and
-`EmbeddingConfig` with mean-pooling to a final 128-d vector.
-
-![Module 2 — Embedding Pipeline](assets/module2.png)
-
-### Module 3 — Face Store (`facevault-core/store`)
-`PersonRecord`/`PersonDao`/`FaceDatabase`, the `EmbeddingTypeConverter`, and the
-`FaceStore` repository over SQLCipher-encrypted Room.
-
-![Module 3 — Face Store](assets/module3.png)
-
-### Modules 4–7 — Matching, Public API, Enrollment UI & Sample
-`EmbeddingMatcher`/`MatchResult`, the `FaceVault` singleton with `SearchState`,
-the `EnrollmentActivity`/`FaceOverlayView`, and the demo app.
-
-![Modules 4–7 — Matching, API, UI & Sample](assets/module4_module5_module6.png)
-
-## Setup
-
-1. **Open in Android Studio** (it provisions the Gradle wrapper automatically) or
-   point `local.properties` at your SDK:
-   ```properties
-   sdk.dir=C\:\\Users\\you\\AppData\\Local\\Android\\Sdk
-   ```
-
-2. **Add the embedding model.** Drop a MobileFaceNet TFLite export at:
-   ```
-   facevault-core/src/main/assets/mobilefacenet.tflite
-   ```
-   It must take a `1×112×112×3` float input normalized to `[-1, 1]` and output a
-   `1×128` embedding. See `assets/README_MODEL.txt`. (Everything else compiles and
-   runs without it; only `FaceEmbedder` needs it at runtime.)
-
-3. **Depend on the modules** from your app:
-   ```kotlin
-   dependencies {
-       implementation(project(":facevault-core"))
-       implementation(project(":facevault-ui")) // optional enrollment UI
-   }
-   ```
-
-4. **Initialize once**, e.g. in `Application.onCreate`:
-   ```kotlin
-   FaceVault.init(
-       context = this,
-       config = FaceVaultConfig(
-           matchThreshold = 0.60f,
-           modelType = ModelType.MOBILEFACENET,
-           enableAntiSpoofing = true,
-           maxEnrollmentAngles = 5,
-           dbPassphrase = null // null => auto-generated, sealed in Keystore
-       )
-   )
-   ```
-
-## Enrollment
-
-### Guided, camera-based (UI module)
-```kotlin
-val launcher = registerForActivityResult(StartActivityForResult()) { res ->
-    val personId = res.data?.getStringExtra(EnrollmentActivity.EXTRA_PERSON_ID)
-}
-launcher.launch(EnrollmentActivity.newIntent(context, name = "Ada Lovelace"))
+```yaml
+dependencies:
+  facevault: ^0.0.1
 ```
 
-### Programmatic, from photos
-```kotlin
-val result: Result<PersonRecord> = FaceVault.enrollPerson(
-    name = "Ada Lovelace",
-    photos = listOf(bitmap1, bitmap2, bitmap3),
-    tags = listOf("family")
-)
+or `flutter pub add facevault`.
+
+### Bundle the embedding model
+
+The native engine needs a TFLite face model. Drop a MobileFaceNet export at:
+
+```
+android/src/main/assets/mobilefacenet.tflite
 ```
 
-## The four search modes
+It must take a `1×112×112×3` float input normalized to `[-1, 1]` and output a
+`1×128` embedding (1×512 for ArcFace). See
+`android/src/main/assets/README_MODEL.txt`. The model is **not** committed (size +
+licensing), so add it before building. Everything compiles without it; only the
+embedding step needs it at runtime.
 
-```kotlin
-// 1) Search by a single photo — one best match.
-FaceVault.searchByPhoto(bitmap).collect { state ->
-    when (state) {
-        is SearchState.SingleResult ->
-            if (state.result.matched) show("${state.result.person?.name} @ ${state.result.confidence}")
-            else show("No match")
-        is SearchState.Error -> show(state.message)
-        else -> showProgress(state) // Detecting / Embedding / Searching
-    }
+## Usage
+
+Photos are passed as encoded image bytes (`Uint8List` of a JPEG/PNG). Grab them
+however you like — `image_picker`, `camera`, an asset, etc.
+
+```dart
+import 'package:facevault/facevault.dart';
+
+await FaceVault.init(const FaceVaultConfig(matchThreshold: 0.60));
+```
+
+### Enroll
+
+```dart
+final PersonRecord person = await FaceVault.enrollPerson(
+  name: 'Ada Lovelace',
+  photos: <Uint8List>[photo1, photo2, photo3],
+  tags: <String>['family'],
+);
+```
+
+### The four search modes
+
+```dart
+// 1) Single photo — one best match.
+final MatchResult r = await FaceVault.searchByPhoto(queryBytes);
+if (r.matched) {
+  print('${r.person!.name} @ ${(r.confidence * 100).toStringAsFixed(1)}%');
 }
 
-// 2) Search by several photos of the SAME person — aggregated (mean-pooled) match.
-FaceVault.searchByPhotos(listOf(bitmapA, bitmapB)).collect { state ->
-    if (state is SearchState.SingleResult) render(state.result)
-}
+// 2) Several photos of the SAME person — aggregated (mean-pooled) match.
+final MatchResult r2 = await FaceVault.searchByPhotos(<Uint8List>[a, b]);
 
 // 3) Group photo — find ALL faces and match each independently.
-FaceVault.findAllInPhoto(groupBitmap).collect { state ->
-    if (state is SearchState.MultipleResults) {
-        state.results.forEach { r -> drawBox(r.faceBounds, r.person?.name, r.matched) }
-    }
+final List<MatchResult> all = await FaceVault.findAllInPhoto(groupBytes);
+for (final MatchResult m in all) {
+  print('${m.faceBounds} -> ${m.matched ? m.person!.name : "unknown"}');
 }
 
 // 4) Group photo + target list — is each requested person present?
-FaceVault.findFromList(groupBitmap, targetPersonIds = listOf(id1, id2)).collect { state ->
-    if (state is SearchState.ListSearchResults) {
-        state.results.forEach { (personId, match) ->
-            when {
-                match == null     -> log("$personId not enrolled")
-                match.matched     -> log("$personId FOUND @ ${match.confidence}")
-                else              -> log("$personId not in photo")
-            }
-        }
-    }
-}
+final Map<String, MatchResult?> hits =
+    await FaceVault.findFromList(groupBytes, <String>[id1, id2]);
+hits.forEach((String id, MatchResult? m) {
+  if (m == null) {
+    print('$id not enrolled');
+  } else {
+    print('$id ${m.matched ? "FOUND @ ${m.confidence}" : "not in photo"}');
+  }
+});
 ```
 
-## Management
+### Management
 
-```kotlin
-val everyone: List<PersonRecord> = FaceVault.listAllPersons()
-FaceVault.updatePerson(personId, newPhotos = listOf(freshBitmap))
-FaceVault.deletePerson(personId)
+```dart
+final List<PersonRecord> everyone = await FaceVault.listAllPersons();
+await FaceVault.updatePerson(personId, <Uint8List>[freshBytes]);
+await FaceVault.deletePerson(personId);
 ```
+
+See [`example/`](example/lib/main.dart) for a complete app.
+
+> **Live camera capture / guided enrollment** is best handled on the Flutter side
+> (e.g. the `camera` or `image_picker` packages) — capture frames there and pass
+> the bytes to FaceVault. The native engine ships the photo-based data-plane.
+
+## Architecture
+
+The diagrams below depict the full native engine. The plugin exposes the
+photo-based data-plane (embedding, store, matching, public API); the camera /
+liveness / enrollment-UI pieces shown are handled app-side in a Flutter app.
+
+### Camera & Liveness (native engine)
+![Module 1 — Camera & Liveness](https://raw.githubusercontent.com/Arpit980jai/FaceVault/main/assets/module1.png)
+
+### Embedding pipeline
+`FaceEmbedder` (TFLite + NNAPI), `FacePreprocessor` crop/align, mean-pooling to a
+128-d vector.
+
+![Module 2 — Embedding Pipeline](https://raw.githubusercontent.com/Arpit980jai/FaceVault/main/assets/module2.png)
+
+### Encrypted face store
+`PersonRecord`/`PersonDao`/`FaceDatabase`, the `EmbeddingTypeConverter`, and the
+`FaceStore` repository over SQLCipher-encrypted Room.
+
+![Module 3 — Face Store](https://raw.githubusercontent.com/Arpit980jai/FaceVault/main/assets/module3.png)
+
+### Matching, API & UI
+`EmbeddingMatcher`/`MatchResult` and the `FaceVault` engine.
+
+![Modules 4–7 — Matching, API, UI & Sample](https://raw.githubusercontent.com/Arpit980jai/FaceVault/main/assets/module4_module5_module6.png)
 
 ## Security model
 
@@ -167,10 +139,10 @@ FaceVault.deletePerson(personId)
   (`facevault.db`, AES-256).
 - The passphrase is random (256-bit), encrypted with a hardware-backed
   **AES-256-GCM** Keystore key, and stored sealed in private prefs. Plaintext only
-  exists transiently in memory while opening the DB. Supply your own via
-  `FaceVaultConfig.dbPassphrase` to override.
+  exists transiently in memory while opening the DB. Override via
+  `FaceVaultConfig.dbPassphrase`.
 - No data ever leaves the device.
 
 ## License
 
-See `LICENSE`.
+[MIT](LICENSE) © Arpit Jaiswal

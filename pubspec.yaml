@@ -1,0 +1,29 @@
+name: facevault
+description: >-
+  On-device facial recognition for Flutter on Android: enroll people from photos,
+  search by one or many photos, find all faces in a group photo, and match against
+  a target list. Embeddings are stored in an encrypted database. No internet.
+version: 0.0.1
+homepage: https://github.com/Arpit980jai/FaceVault
+repository: https://github.com/Arpit980jai/FaceVault
+issue_tracker: https://github.com/Arpit980jai/FaceVault/issues
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.facevault.facevault
+        pluginClass: FacevaultPlugin

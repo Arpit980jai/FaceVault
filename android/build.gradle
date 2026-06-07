@@ -1,0 +1,71 @@
+group = "com.facevault.facevault"
+version = "1.0"
+
+buildscript {
+    ext.kotlin_version = "1.9.22"
+    ext.ksp_version = "1.9.22-1.0.17"
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.1.4"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:$ksp_version"
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+apply plugin: "com.google.devtools.ksp"
+
+android {
+    namespace = "com.facevault.facevault"
+    compileSdk = 34
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        minSdk = 24
+    }
+
+    // Keep the bundled .tflite model uncompressed so the interpreter can mmap it.
+    androidResources {
+        noCompress += "tflite"
+    }
+}
+
+dependencies {
+    // ML
+    implementation "com.google.mlkit:face-detection:16.1.5"
+    implementation "org.tensorflow:tensorflow-lite:2.13.0"
+    implementation "org.tensorflow:tensorflow-lite-support:0.4.4"
+
+    // Room (encrypted store)
+    implementation "androidx.room:room-runtime:2.6.1"
+    implementation "androidx.room:room-ktx:2.6.1"
+    ksp "androidx.room:room-compiler:2.6.1"
+
+    // Encryption
+    implementation "net.zetetic:android-database-sqlcipher:4.5.4"
+    implementation "androidx.sqlite:sqlite-ktx:2.4.0"
+
+    // Coroutines + AndroidX foundation
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    implementation "androidx.core:core-ktx:1.12.0"
+    implementation "androidx.annotation:annotation:1.7.1"
+}

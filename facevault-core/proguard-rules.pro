@@ -1,4 +1,0 @@
--keep class org.tensorflow.lite.** { *; }
--dontwarn org.tensorflow.lite.**
--keep class net.sqlcipher.** { *; }
--dontwarn net.sqlcipher.**

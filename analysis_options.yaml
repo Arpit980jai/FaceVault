@@ -1,0 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
+# Additional analyzer configuration: https://dart.dev/tools/analysis
+analyzer:
+  exclude:
+    - example/**
