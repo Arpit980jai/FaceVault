@@ -31,25 +31,25 @@ facevault/
 Guided 5-pose capture, blink/head-turn/quality liveness gates, and the
 `CaptureState` flow.
 
-![Module 1 — Camera & Liveness](aseets/module1.png)
+![Module 1 — Camera & Liveness](assets/module1.png)
 
 ### Module 2 — Embedding Pipeline (`facevault-core/embedding`)
 `FaceEmbedder` (TFLite + NNAPI), `FacePreprocessor` crop/align, and
 `EmbeddingConfig` with mean-pooling to a final 128-d vector.
 
-![Module 2 — Embedding Pipeline](aseets/module2.png)
+![Module 2 — Embedding Pipeline](assets/module2.png)
 
 ### Module 3 — Face Store (`facevault-core/store`)
 `PersonRecord`/`PersonDao`/`FaceDatabase`, the `EmbeddingTypeConverter`, and the
 `FaceStore` repository over SQLCipher-encrypted Room.
 
-![Module 3 — Face Store](aseets/module3.png)
+![Module 3 — Face Store](assets/module3.png)
 
 ### Modules 4–7 — Matching, Public API, Enrollment UI & Sample
 `EmbeddingMatcher`/`MatchResult`, the `FaceVault` singleton with `SearchState`,
 the `EnrollmentActivity`/`FaceOverlayView`, and the demo app.
 
-![Modules 4–7 — Matching, API, UI & Sample](aseets/module4_module5_module6.png)
+![Modules 4–7 — Matching, API, UI & Sample](assets/module4_module5_module6.png)
 
 ## Setup
 
