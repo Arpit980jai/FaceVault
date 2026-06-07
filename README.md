@@ -1,5 +1,10 @@
 # FaceVault
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://developer.android.com)
+[![Min SDK](https://img.shields.io/badge/minSdk-24-blue.svg)](https://developer.android.com/about/versions/nougat)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+
 On-device facial recognition for Android, packaged as a multi-module library
 (AAR). Capture, liveness, embedding, encrypted storage and matching all run
 **locally** — FaceVault declares **no `INTERNET` permission**.
